@@ -3,6 +3,7 @@ SupplyChainRescue AI - FastAPI Backend
 Main application entry point for the disaster relief optimization system.
 """
 import logging
+import asyncio
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -12,7 +13,12 @@ import uvicorn
 # Import local modules
 from backend.config import settings
 from backend.models.schemas import APIResponse
+from backend.db.database import create_tables
 
+# Import route modules
+from backend.routes.roads import router as roads_router
+from backend.routes.weather import router as weather_router
+from backend.routes.forecast import router as forecast_router
 # Import route modules
 from backend.routes.roads import router as roads_router
 from backend.routes.weather import router as weather_router
@@ -29,7 +35,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     logger.info("Starting SupplyChainRescue AI backend...")
-    # TODO: Initialize database connections, ML models, etc.
+    await asyncio.get_event_loop().run_in_executor(None, create_tables)
+    # TODO: Initialize ML models, etc.
     yield
     logger.info("Shutting down SupplyChainRescue AI backend...")
     # TODO: Cleanup resources
@@ -76,6 +83,18 @@ app.include_router(
     roads_router,
     prefix=settings.api_v1_prefix + "/roads",
     tags=["roads"]
+)
+
+app.include_router(
+    weather_router,
+    prefix=settings.api_v1_prefix + "/weather",
+    tags=["weather"]
+)
+
+app.include_router(
+    forecast_router,
+    prefix=settings.api_v1_prefix + "/forecast",
+    tags=["forecast"]
 )
 
 app.include_router(
@@ -162,6 +181,11 @@ async def root():
             }
         }
     ).dict()
+    "endpoints": {
+        "roads": settings.api_v1_prefix + "/roads",
+        "weather": settings.api_v1_prefix + "/weather",
+        "forecast": settings.api_v1_prefix + "/forecast",  # Added forecast endpoint
+    }
 
 # TODO: Add more routers as per roadmap:
 # - /api/v1/forecast - Forecasting models

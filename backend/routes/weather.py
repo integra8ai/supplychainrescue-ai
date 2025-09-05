@@ -7,11 +7,14 @@ import logging
 import requests
 from typing import List, Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from sqlalchemy.orm import Session
 from backend.config import settings
+from backend.db.database import get_db
 from backend.models.schemas import (
-    WeatherData, WeatherCondition, WeatherForecastRequest, APIResponse
+    WeatherData, WeatherCondition, WeatherForecastRequest, APIResponse, RoadClosure
 )
+from backend.models.sql_models import WeatherData as SQLWeatherData, RoadClosure as SQLRoadClosure
 
 # Create router
 router = APIRouter()
@@ -203,6 +206,115 @@ async def get_weather_alerts(
             }
         )
 
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# CRUD for WeatherData
+
+@router.post("/data", response_model=APIResponse)
+async def create_weather_data(weather: WeatherData, db: Session = Depends(get_db)):
+    """Create weather data entry"""
+    try:
+        db_weather = SQLWeatherData(**weather.dict())
+        db.add(db_weather)
+        db.commit()
+        db.refresh(db_weather)
+        return APIResponse(
+            success=True,
+            message="Weather data created successfully",
+            data={"weather_id": db_weather.id}
+        )
+    except Exception as e:
+        logger.error(f"Error creating weather data: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/data/{weather_id}", response_model=APIResponse)
+async def get_weather_data(weather_id: int, db: Session = Depends(get_db)):
+    """Get weather data by id"""
+    try:
+        db_weather = db.query(SQLWeatherData).filter(
+            SQLWeatherData.id == weather_id).first()
+        if not db_weather:
+            raise HTTPException(
+                status_code=404, detail="Weather data not found")
+        data = db_weather.__dict__
+        del data['_sa_instance_state']
+        return APIResponse(
+            success=True,
+            message="Weather data retrieved",
+            data={"weather": data}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving weather data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# CRUD for RoadClosure
+
+@router.post("/closures", response_model=APIResponse)
+async def create_road_closure(closure: RoadClosure, db: Session = Depends(get_db)):
+    """Create road closure"""
+    try:
+        db_closure = SQLRoadClosure(**closure.dict())
+        db.add(db_closure)
+        db.commit()
+        db.refresh(db_closure)
+        return APIResponse(
+            success=True,
+            message="Road closure created successfully",
+            data={"closure_id": db_closure.id}
+        )
+    except Exception as e:
+        logger.error(f"Error creating road closure: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/closures", response_model=APIResponse)
+async def list_road_closures(db: Session = Depends(get_db)):
+    """List road closures"""
+    try:
+        closures = db.query(SQLRoadClosure).all()
+        data = []
+        for c in closures:
+            d = c.__dict__
+            del d['_sa_instance_state']
+            data.append(d)
+        return APIResponse(
+            success=True,
+            message=f"Retrieved {len(closures)} road closures",
+            data={"closures": data}
+        )
+    except Exception as e:
+        logger.error(f"Error listing road closures: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/closures/{closure_id}", response_model=APIResponse)
+async def get_road_closure(closure_id: int, db: Session = Depends(get_db)):
+    """Get road closure by id"""
+    try:
+        db_closure = db.query(SQLRoadClosure).filter(
+            SQLRoadClosure.id == closure_id).first()
+        if not db_closure:
+            raise HTTPException(
+                status_code=404, detail="Road closure not found")
+        data = db_closure.__dict__
+        del data['_sa_instance_state']
+        return APIResponse(
+            success=True,
+            message="Road closure retrieved",
+            data={"closure": data}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving road closure: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         logger.error(f"Error retrieving weather alerts: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
