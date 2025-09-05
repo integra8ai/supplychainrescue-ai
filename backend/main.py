@@ -19,9 +19,7 @@ from backend.db.database import create_tables
 from backend.routes.roads import router as roads_router
 from backend.routes.weather import router as weather_router
 from backend.routes.forecast import router as forecast_router
-# Import route modules
-from backend.routes.roads import router as roads_router
-from backend.routes.weather import router as weather_router
+from backend.routes.optimize import router as optimize_router
 
 # Configure logging
 logging.basicConfig(
@@ -98,9 +96,9 @@ app.include_router(
 )
 
 app.include_router(
-    weather_router,
-    prefix=settings.api_v1_prefix + "/weather",
-    tags=["weather"]
+    optimize_router,
+    prefix=settings.api_v1_prefix + "/optimize",
+    tags=["optimize"]
 )
 
 # Health check endpoints
@@ -177,15 +175,12 @@ async def root():
             },
             "endpoints": {
                 "roads": settings.api_v1_prefix + "/roads",
-                "weather": settings.api_v1_prefix + "/weather"
+                "weather": settings.api_v1_prefix + "/weather",
+                "forecast": settings.api_v1_prefix + "/forecast",
+                "optimize": settings.api_v1_prefix + "/optimize",
             }
         }
     ).dict()
-    "endpoints": {
-        "roads": settings.api_v1_prefix + "/roads",
-        "weather": settings.api_v1_prefix + "/weather",
-        "forecast": settings.api_v1_prefix + "/forecast",  # Added forecast endpoint
-    }
 
 # TODO: Add more routers as per roadmap:
 # - /api/v1/forecast - Forecasting models

@@ -206,6 +206,8 @@ async def get_weather_alerts(
             }
         )
 
+    except Exception as e:
+        logger.error(f"Error retrieving weather alerts: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
